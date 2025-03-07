@@ -11,6 +11,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 export default function MembersManagementPage() {
   const router = useRouter();
@@ -26,6 +35,9 @@ export default function MembersManagementPage() {
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editAvatarFile, setEditAvatarFile] = useState<File | null>(null);
+  const [memberToDelete, setMemberToDelete] = useState<any | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Add a ref to store the current preview URL
   const editAvatarPreviewUrl = useRef<string | null>(null);
@@ -277,38 +289,64 @@ export default function MembersManagementPage() {
     }
   };
 
-  const deleteMember = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this member? This will also remove them from any partner assignments.')) {
-      setDeletingMember(id);
+  // Start the delete process by opening the confirmation dialog
+  const confirmDeleteMember = (member: any) => {
+    setMemberToDelete(member);
+    setDeleteConfirmName('');
+    setDeleteDialogOpen(true);
+  };
+
+  // Delete the member if confirmation is successful
+  const deleteMember = async () => {
+    if (!memberToDelete) return;
+    
+    // Get admin email from user state instead of name
+    const adminEmail = user?.email || '';
+    
+    // Check if the entered name matches the admin's email (or part of it)
+    // This is a simple alternative since we don't have access to user.name
+    if (!deleteConfirmName.trim() || !adminEmail.includes(deleteConfirmName.trim().toLowerCase())) {
+      toast({
+        title: "Verification Failed",
+        description: "The verification text you entered is incorrect. Deletion cancelled.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
+    
+    // If verification passed, proceed with deletion
+    setDeletingMember(memberToDelete.id);
+    setDeleteDialogOpen(false);
+    
+    try {
+      // Delete member
+      const { error } = await supabase
+        .from('members')
+        .delete()
+        .eq('id', memberToDelete.id);
       
-      try {
-        // Delete member
-        const { error } = await supabase
-          .from('members')
-          .delete()
-          .eq('id', id);
-        
-        if (error) throw error;
-        
-        // Update local state
-        setMembers(members.filter(member => member.id !== id));
-        
-        toast({
-          title: "Success",
-          description: "Member deleted successfully",
-          duration: 5000,
-        });
-      } catch (error) {
-        console.error('Error deleting member:', error);
-        toast({
-          title: "Error",
-          description: "Failed to delete member. Please try again.",
-          variant: "destructive",
-          duration: 5000,
-        });
-      } finally {
-        setDeletingMember(null);
-      }
+      if (error) throw error;
+      
+      // Update local state
+      setMembers(members.filter(member => member.id !== memberToDelete.id));
+      
+      toast({
+        title: "Success",
+        description: "Member deleted successfully",
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error('Error deleting member:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete member. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setDeletingMember(null);
+      setMemberToDelete(null);
     }
   };
 
@@ -547,7 +585,7 @@ export default function MembersManagementPage() {
                             <Button 
                               variant="destructive" 
                               size="sm"
-                              onClick={() => deleteMember(member.id)}
+                              onClick={() => confirmDeleteMember(member)}
                               disabled={deletingMember === member.id}
                             >
                               {deletingMember === member.id ? (
@@ -567,6 +605,49 @@ export default function MembersManagementPage() {
           </Card>
         </>
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the member{' '}
+              <span className="font-semibold">{memberToDelete?.name}</span> and remove all of their data.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="mb-2 text-sm text-gray-700">
+              To verify, please enter your email address (or part of it):
+            </p>
+            <Input
+              value={deleteConfirmName}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeleteConfirmName(e.target.value)}
+              placeholder="Enter verification text"
+              className="w-full"
+            />
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setDeleteDialogOpen(false)}
+              className="mt-2 sm:mt-0"
+            >
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={deleteMember}
+              disabled={!deleteConfirmName.trim()}
+              className="mt-2 sm:mt-0"
+            >
+              Yes, Delete Member
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

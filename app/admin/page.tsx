@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { 
   Calendar as CalendarIcon, 
   Upload, 
@@ -12,7 +12,9 @@ import {
   CheckCircle,
   XCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Trash,
+  Pencil
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -39,8 +41,11 @@ export default function AdminPage() {
   const [partners, setPartners] = useState<any[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
+  const [photos, setPhotos] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<AttendanceType[]>([]);
   const [updatingAttendance, setUpdatingAttendance] = useState<string | null>(null);
+  const [editPhotoId, setEditPhotoId] = useState<string | null>(null);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   
   const formattedDate = format(date, 'yyyy-MM-dd');
   const displayDate = format(date, 'EEEE, MMMM d, yyyy');
@@ -104,6 +109,35 @@ export default function AdminPage() {
         
         if (attendanceError) throw attendanceError;
         setAttendance(attendanceData || []);
+        
+        // Fetch photos for the selected date
+        const { data: photosData, error: photosError } = await supabase
+          .from('photo_history')
+          .select('*')
+          .eq('date', formattedDate);
+        
+        if (photosError) {
+          console.error('Error fetching photos:', photosError);
+        } else {
+          if (photosData && photosData.length > 0) {
+            // Transform photo URLs to include storage URL
+            const photosWithUrls = photosData.map(photo => {
+              const { data: publicUrl } = supabase.storage
+                .from('photos')
+                .getPublicUrl(photo.image_url);
+              
+              return {
+                ...photo,
+                url: publicUrl.publicUrl,
+                alt: `Photo from ${format(parseISO(photo.date), 'MMMM d, yyyy')}`
+              };
+            });
+            
+            setPhotos(photosWithUrls);
+          } else {
+            setPhotos([]);
+          }
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
         toast({
@@ -157,6 +191,28 @@ export default function AdminPage() {
       
       if (dbError) throw dbError;
       
+      // Refresh photos after upload
+      const { data: newPhotosData } = await supabase
+        .from('photo_history')
+        .select('*')
+        .eq('date', formattedDate);
+      
+      if (newPhotosData && newPhotosData.length > 0) {
+        const photosWithUrls = newPhotosData.map(photo => {
+          const { data: publicUrl } = supabase.storage
+            .from('photos')
+            .getPublicUrl(photo.image_url);
+          
+          return {
+            ...photo,
+            url: publicUrl.publicUrl,
+            alt: `Photo from ${format(parseISO(photo.date), 'MMMM d, yyyy')}`
+          };
+        });
+        
+        setPhotos(photosWithUrls);
+      }
+      
       toast({
         title: "Success",
         description: "Photo uploaded successfully.",
@@ -180,12 +236,203 @@ export default function AdminPage() {
     }
   };
 
+  // Delete photo
+  const deletePhoto = async (photoId: string, photoPath: string) => {
+    setDeletingPhotoId(photoId);
+    
+    try {
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('photos')
+        .remove([photoPath]);
+      
+      if (storageError) {
+        console.error('Error deleting photo from storage:', storageError);
+        throw storageError;
+      }
+      
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from('photo_history')
+        .delete()
+        .eq('id', photoId);
+      
+      if (dbError) {
+        console.error('Error deleting photo from database:', dbError);
+        throw dbError;
+      }
+      
+      // Update local state
+      setPhotos(photos.filter(photo => photo.id !== photoId));
+      
+      toast({
+        title: "Success",
+        description: "Photo deleted successfully.",
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete photo. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  };
+
+  // Replace photo
+  const replacePhoto = async (photoId: string, oldPhotoPath: string) => {
+    if (!photo) return;
+    
+    setUploadingPhoto(true);
+    
+    try {
+      // Delete old photo from storage
+      await supabase.storage
+        .from('photos')
+        .remove([oldPhotoPath]);
+      
+      // Upload new photo
+      const fileExt = photo.name.split('.').pop();
+      const fileName = `${formattedDate}_${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `daily/${fileName}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(filePath, photo);
+      
+      if (uploadError) throw uploadError;
+      
+      // Update in database
+      const { error: dbError } = await supabase
+        .from('photo_history')
+        .update({ image_url: filePath })
+        .eq('id', photoId);
+      
+      if (dbError) throw dbError;
+      
+      // Refresh photos
+      const { data: newPhotosData } = await supabase
+        .from('photo_history')
+        .select('*')
+        .eq('date', formattedDate);
+      
+      if (newPhotosData && newPhotosData.length > 0) {
+        const photosWithUrls = newPhotosData.map(photo => {
+          const { data: publicUrl } = supabase.storage
+            .from('photos')
+            .getPublicUrl(photo.image_url);
+          
+          return {
+            ...photo,
+            url: publicUrl.publicUrl,
+            alt: `Photo from ${format(parseISO(photo.date), 'MMMM d, yyyy')}`
+          };
+        });
+        
+        setPhotos(photosWithUrls);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Photo replaced successfully.",
+        duration: 5000,
+      });
+      
+      setPhoto(null);
+      setEditPhotoId(null);
+      
+      // Reset the file input
+      const fileInput = document.getElementById('photo-upload') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+    } catch (error) {
+      console.error('Error replacing photo:', error);
+      toast({
+        title: "Error",
+        description: "Failed to replace photo. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   // Save partner assignment
   const handlePartnerSelect = async (value: string, partnerIndex: number, partnerPosition: 'player1_id' | 'player2_id') => {
     try {
-      // If this pair already exists in the database
+      // Check if the member is present
+      const isMemberPresent = attendance.some(record => record.user_id === value);
+      
+      if (!isMemberPresent) {
+        toast({
+          title: "Error",
+          description: "Only present members can be assigned as partners.",
+          variant: "destructive",
+          duration: 5000,
+        });
+        return;
+      }
+      
+      // Get the existing pair from state
       const existingPair = partners[partnerIndex];
       
+      // Check if this is a temporary pair (not yet saved to the database)
+      if (existingPair && existingPair.id.toString().startsWith('temp-')) {
+        // Update the pair in local state
+        const updatedPartner = {
+          ...existingPair,
+          [partnerPosition]: value,
+        };
+        
+        // Check if both players are now selected
+        if (
+          (partnerPosition === 'player1_id' && updatedPartner.player2_id) ||
+          (partnerPosition === 'player2_id' && updatedPartner.player1_id)
+        ) {
+          // Both players are selected, save to database
+          const newPair = {
+            date: formattedDate,
+            player1_id: updatedPartner.player1_id,
+            player2_id: updatedPartner.player2_id,
+          };
+          
+          const { data, error } = await supabase
+            .from('partner_assignments')
+            .insert([newPair])
+            .select();
+          
+          if (error) throw error;
+          
+          // Update in local state - replace temp with real DB record
+          const updatedPartners = [...partners];
+          updatedPartners[partnerIndex] = data[0];
+          setPartners(updatedPartners);
+          
+          toast({
+            title: "Success",
+            description: "Partner assignment saved to database.",
+            duration: 5000,
+          });
+        } else {
+          // Only one player selected, just update local state
+          const updatedPartners = [...partners];
+          updatedPartners[partnerIndex] = updatedPartner;
+          setPartners(updatedPartners);
+          
+          toast({
+            title: "Success",
+            description: "Partner assignment updated. Select the other player to save.",
+            duration: 5000,
+          });
+        }
+        return;
+      }
+      
+      // This is a pair that exists in the database
       if (existingPair) {
         // Update existing pair
         const { error } = await supabase
@@ -202,6 +449,12 @@ export default function AdminPage() {
           [partnerPosition]: value,
         };
         setPartners(updatedPartners);
+        
+        toast({
+          title: "Success",
+          description: "Partner assignment updated.",
+          duration: 5000,
+        });
       } else {
         // Create new pair
         const newPair = {
@@ -219,13 +472,13 @@ export default function AdminPage() {
         
         // Add to local state
         setPartners([...partners, data[0]]);
+        
+        toast({
+          title: "Success",
+          description: "Partner assignment created.",
+          duration: 5000,
+        });
       }
-      
-      toast({
-        title: "Success",
-        description: "Partner assignment updated.",
-        duration: 5000,
-      });
     } catch (error) {
       console.error('Error updating partner assignment:', error);
       toast({
@@ -304,6 +557,63 @@ export default function AdminPage() {
         
         // Update local state
         setAttendance(attendance.filter(record => record.user_id !== memberId));
+        
+        // When a member is marked absent, remove them from any partner assignments
+        const updatedPartners = [...partners];
+        let partnerAssignmentsChanged = false;
+        
+        // Check for database-saved partners
+        const dbPartners = updatedPartners.filter(pair => !pair.id.toString().startsWith('temp-'));
+        for (const pair of dbPartners) {
+          if (pair.player1_id === memberId || pair.player2_id === memberId) {
+            partnerAssignmentsChanged = true;
+            // Remove the member from the pair in the database
+            const update = pair.player1_id === memberId 
+              ? { player1_id: null } 
+              : { player2_id: null };
+            
+            await supabase
+              .from('partner_assignments')
+              .update(update)
+              .eq('id', pair.id);
+            
+            // Update local state
+            const index = updatedPartners.findIndex(p => p.id === pair.id);
+            if (index !== -1) {
+              updatedPartners[index] = {
+                ...pair,
+                ...update
+              };
+            }
+          }
+        }
+        
+        // Check for temporary partners
+        const tempPartners = updatedPartners.filter(pair => pair.id.toString().startsWith('temp-'));
+        for (const pair of tempPartners) {
+          if (pair.player1_id === memberId || pair.player2_id === memberId) {
+            partnerAssignmentsChanged = true;
+            // Update the temporary pair
+            const index = updatedPartners.findIndex(p => p.id === pair.id);
+            if (index !== -1) {
+              if (pair.player1_id === memberId) {
+                updatedPartners[index] = { ...pair, player1_id: null };
+              } else {
+                updatedPartners[index] = { ...pair, player2_id: null };
+              }
+            }
+          }
+        }
+        
+        // Update partners state if any changes were made
+        if (partnerAssignmentsChanged) {
+          setPartners(updatedPartners);
+          toast({
+            title: "Partner Assignments Updated",
+            description: "The member was removed from partner assignments.",
+            duration: 5000,
+          });
+        }
       } else {
         // Add attendance
         const { data: newRecord, error } = await supabase
@@ -506,9 +816,17 @@ export default function AdminPage() {
                           <SelectValue placeholder="Select Player 1" />
                         </SelectTrigger>
                         <SelectContent>
-                          {members.map((member) => (
-                            <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
-                          ))}
+                          {members
+                            .filter(member => attendance.some(record => record.user_id === member.id))
+                            .map((member) => (
+                              <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
+                            ))
+                          }
+                          {!members.some(member => attendance.some(record => record.user_id === member.id)) && (
+                            <div className="px-2 py-1 text-sm text-muted-foreground">
+                              No present members available
+                            </div>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -529,9 +847,17 @@ export default function AdminPage() {
                           <SelectValue placeholder="Select Player 2" />
                         </SelectTrigger>
                         <SelectContent>
-                          {members.map((member) => (
-                            <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
-                          ))}
+                          {members
+                            .filter(member => attendance.some(record => record.user_id === member.id))
+                            .map((member) => (
+                              <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
+                            ))
+                          }
+                          {!members.some(member => attendance.some(record => record.user_id === member.id)) && (
+                            <div className="px-2 py-1 text-sm text-muted-foreground">
+                              No present members available
+                            </div>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -545,11 +871,75 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
+          {/* Daily Photos */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Daily Photos for {displayDate}</CardTitle>
+                <CardDescription>View photos from this date</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {photos.length > 0 ? (
+                <div className="relative overflow-hidden rounded-lg bg-orange-50">
+                  <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory p-4">
+                    {photos.map((photo, i) => (
+                      <div key={i} className="flex-none w-full max-w-md snap-center">
+                        <div className="relative aspect-[4/3] rounded-lg overflow-hidden group">
+                          <img 
+                            src={photo.url} 
+                            alt={photo.alt} 
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="secondary" 
+                                size="sm" 
+                                className="bg-white hover:bg-gray-100 text-gray-800"
+                                onClick={() => setEditPhotoId(photo.id)}
+                                disabled={!!deletingPhotoId}
+                              >
+                                <Pencil className="h-4 w-4 mr-1" />
+                                Edit
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => deletePhoto(photo.id, photo.image_url)}
+                                disabled={!!deletingPhotoId}
+                              >
+                                {deletingPhotoId === photo.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                                ) : (
+                                  <Trash className="h-4 w-4 mr-1" />
+                                )}
+                                Delete
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-orange-50 rounded-lg">
+                  <p className="text-muted-foreground">No photos available for this date</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Photo Upload */}
           <Card>
             <CardHeader>
-              <CardTitle>Upload Photo for {displayDate}</CardTitle>
-              <CardDescription>Upload a photo for today's gathering</CardDescription>
+              <CardTitle>
+                {editPhotoId ? 'Replace Photo' : 'Upload Photo'} for {displayDate}
+              </CardTitle>
+              <CardDescription>
+                {editPhotoId ? 'Replace an existing photo' : 'Upload a new photo for today\'s gathering'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -572,18 +962,55 @@ export default function AdminPage() {
                   </div>
                 )}
                 
-                <Button
-                  onClick={uploadPhoto}
-                  disabled={!photo || uploadingPhoto}
-                  className="flex items-center gap-2"
-                >
-                  {uploadingPhoto ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                <div className="flex gap-4">
+                  {editPhotoId ? (
+                    <>
+                      <Button 
+                        onClick={() => {
+                          const photoToEdit = photos.find(p => p.id === editPhotoId);
+                          if (photoToEdit) {
+                            replacePhoto(photoToEdit.id, photoToEdit.image_url);
+                          }
+                        }} 
+                        disabled={!photo || uploadingPhoto}
+                        className="flex-1"
+                      >
+                        {uploadingPhoto ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Replacing...
+                          </>
+                        ) : 'Replace Photo'}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setEditPhotoId(null);
+                          setPhoto(null);
+                          const fileInput = document.getElementById('photo-upload') as HTMLInputElement;
+                          if (fileInput) fileInput.value = '';
+                        }}
+                        disabled={uploadingPhoto}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </>
                   ) : (
-                    <Upload className="h-4 w-4" />
+                    <Button 
+                      onClick={uploadPhoto} 
+                      disabled={!photo || uploadingPhoto}
+                      className="w-full"
+                    >
+                      {uploadingPhoto ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : 'Upload Photo'}
+                    </Button>
                   )}
-                  {uploadingPhoto ? "Uploading..." : "Upload Photo"}
-                </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
