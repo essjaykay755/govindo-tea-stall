@@ -1,0 +1,12 @@
+---
+description: Technical Stack
+globs: 
+alwaysApply: true
+---
+# Teachers Gallery Tech Stack (Short Version)
+
+- **Frontend**: Next.js (React, server-side rendering)  
+<!-- - **Backend**: Supabase (PostgreSQL, Auth, Storage)   -->
+- **Styling**: Shadcn, CSS Modules or Tailwind CSS  
+- **Deployment**: Vercel  
+

@@ -1,101 +1,62 @@
-import Image from "next/image";
+import { Coffee, Users, GamepadIcon, CalendarDays } from "lucide-react"
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="relative min-h-screen">
+      {/* Hero Section */}
+      <div className="absolute inset-0 -z-10 h-full w-full bg-gradient-to-b from-orange-100/70 via-white to-white" />
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+        <div className="flex flex-col items-center text-center mb-16 sm:mb-24">
+          <Coffee className="h-16 w-16 text-orange-600 mb-6" />
+          <div className="space-y-3">
+            <p className="text-lg font-medium text-orange-600 tracking-wide uppercase">welcome to</p>
+            <h1 className="font-heading text-4xl font-bold text-orange-800 sm:text-7xl tracking-wider uppercase px-4">
+              Govindo Tea Stall
+            </h1>
+          </div>
+          <p className="text-lg text-muted-foreground max-w-2xl mt-6 leading-relaxed px-4">
+            A cozy corner where friends gather, stories unfold, and carrom battles are won.
+            Join us in creating daily memories over a perfect cup of tea.
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <div className="grid gap-8 md:grid-cols-2 max-w-5xl mx-auto">
+          <div className="group relative overflow-hidden rounded-lg border bg-gradient-to-b from-orange-50 p-6 sm:p-8 transition-all hover:shadow-lg hover:-translate-y-1">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="rounded-full bg-orange-100 p-2.5">
+                <Users className="h-6 w-6 text-orange-600" />
+              </div>
+              <h2 className="font-heading text-2xl font-semibold text-orange-800">Adda Section</h2>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              Track daily attendance for hangout sessions and stay connected with friends.
+              Never miss a moment of laughter and camaraderie.
+            </p>
+            <div className="absolute inset-0 -z-10 bg-gradient-to-br from-orange-100/50 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+          </div>
+
+          <div className="group relative overflow-hidden rounded-lg border bg-gradient-to-b from-orange-50 p-6 sm:p-8 transition-all hover:shadow-lg hover:-translate-y-1">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="rounded-full bg-orange-100 p-2.5">
+                <GamepadIcon className="h-6 w-6 text-orange-600" />
+              </div>
+              <h2 className="font-heading text-2xl font-semibold text-orange-800">Carrom Section</h2>
+            </div>
+            <p className="text-muted-foreground leading-relaxed">
+              Manage carrom games, partner assignments, and upcoming tournaments.
+              Challenge friends and track your progress.
+            </p>
+            <div className="absolute inset-0 -z-10 bg-gradient-to-br from-orange-100/50 via-transparent to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+          </div>
+        </div>
+
+        <div className="mt-16 text-center">
+          <div className="inline-flex items-center rounded-full border bg-orange-50 px-4 py-1.5 hover:bg-orange-100 transition-colors cursor-pointer">
+            <CalendarDays className="mr-2 h-4 w-4 text-orange-600" />
+            <span className="font-heading text-sm font-medium text-orange-800 tracking-wide">Daily Updates & History</span>
+          </div>
+        </div>
+      </div>
     </div>
-  );
+  )
 }
