@@ -382,7 +382,7 @@ export default function MembersManagementPage() {
       <div className="flex items-center justify-between">
         <Link href="/admin" className="flex items-center text-orange-600 hover:text-orange-700">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Admin Dashboard
+          <span className="text-sm sm:text-base">Back to Admin Dashboard</span>
         </Link>
       </div>
       
@@ -397,7 +397,7 @@ export default function MembersManagementPage() {
       ) : (
         <>
           {/* Add New Member */}
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle>Add New Member</CardTitle>
               <CardDescription>Add a new member with name and avatar</CardDescription>

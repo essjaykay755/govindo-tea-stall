@@ -683,13 +683,16 @@ export default function AdminPage() {
 
   return (
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="flex flex-col items-start gap-4">
         <h1 className="text-3xl font-bold text-orange-800 font-heading">Admin Panel</h1>
-        <div className="flex items-center gap-4">
+        
+        {/* Date Navigation */}
+        <div className="flex flex-wrap items-center gap-2 w-full">
           <Button
             variant="outline"
             size="icon"
             onClick={() => navigateDate('prev')}
+            className="flex-shrink-0"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -698,7 +701,7 @@ export default function AdminPage() {
               <Button
                 variant={"outline"}
                 className={cn(
-                  "justify-start text-left font-normal w-[240px]",
+                  "justify-start text-left font-normal flex-grow min-w-[180px] max-w-[240px]",
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
@@ -719,6 +722,7 @@ export default function AdminPage() {
             variant="outline"
             size="icon"
             onClick={() => navigateDate('next')}
+            className="flex-shrink-0"
             disabled={
               date.getDate() === new Date().getDate() && 
               date.getMonth() === new Date().getMonth() && 
@@ -727,8 +731,8 @@ export default function AdminPage() {
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
-          <Link href="/admin/members">
-            <Button variant="outline" className="flex items-center gap-2">
+          <Link href="/admin/members" className="flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+            <Button variant="outline" className="flex items-center gap-2 w-full">
               <UserCog className="h-4 w-4" />
               Member Management
             </Button>
@@ -743,7 +747,7 @@ export default function AdminPage() {
       ) : (
         <>
           {/* Attendance */}
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle>Attendance for {displayDate}</CardTitle>
               <CardDescription>Mark who is present today</CardDescription>
@@ -755,16 +759,16 @@ export default function AdminPage() {
                   return (
                     <div 
                       key={member.id} 
-                      className={`flex items-center p-4 rounded-lg border ${isPresent ? 'bg-green-50 border-green-200' : ''}`}
+                      className={`flex items-center p-3 rounded-lg border ${isPresent ? 'bg-green-50 border-green-200' : ''}`}
                     >
-                      <Avatar className="h-10 w-10 mr-3">
+                      <Avatar className="h-8 w-8 mr-2 flex-shrink-0">
                         <AvatarImage src={getAvatarUrl(member.image)} alt={member.name} />
                         <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <p className="font-medium">{member.name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{member.name}</p>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex items-center ml-1">
                         {updatingAttendance === member.id ? (
                           <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
                         ) : (
@@ -784,7 +788,7 @@ export default function AdminPage() {
           </Card>
 
           {/* Partner Assignment */}
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle>Partner Assignments for {displayDate}</CardTitle>
               <CardDescription>Assign partners for today's games</CardDescription>
@@ -792,7 +796,7 @@ export default function AdminPage() {
             <CardContent>
               <div className="space-y-6">
                 {partners.map((pair, index) => (
-                  <div key={index} className="flex flex-col md:flex-row items-center gap-4 p-4 rounded-lg border relative">
+                  <div key={index} className="flex flex-col md:flex-row items-center gap-4 p-4 rounded-lg border relative pb-6 md:pb-4">
                     <div className="absolute top-2 right-2">
                       <Button 
                         variant="outline" 
@@ -804,15 +808,15 @@ export default function AdminPage() {
                       </Button>
                     </div>
                     
-                    <div className="flex flex-1 items-center gap-2">
-                      <Avatar className="h-10 w-10 bg-orange-100">
+                    <div className="flex flex-1 w-full md:w-auto items-center gap-2 mb-3 md:mb-0">
+                      <Avatar className="h-10 w-10 bg-orange-100 flex-shrink-0">
                         <AvatarFallback>P1</AvatarFallback>
                       </Avatar>
                       <Select
                         value={pair.player1_id ?? ""}
                         onValueChange={(value) => handlePartnerSelect(value, index, 'player1_id')}
                       >
-                        <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select Player 1" />
                         </SelectTrigger>
                         <SelectContent>
@@ -831,19 +835,19 @@ export default function AdminPage() {
                       </Select>
                     </div>
                     
-                    <div className="rounded-full bg-orange-100 p-2">
+                    <div className="rounded-full bg-orange-100 p-2 hidden md:block">
                       <Users2 className="h-5 w-5 text-orange-600" />
                     </div>
                     
-                    <div className="flex flex-1 items-center gap-2">
-                      <Avatar className="h-10 w-10 bg-orange-100">
+                    <div className="flex flex-1 w-full md:w-auto items-center gap-2">
+                      <Avatar className="h-10 w-10 bg-orange-100 flex-shrink-0">
                         <AvatarFallback>P2</AvatarFallback>
                       </Avatar>
                       <Select
                         value={pair.player2_id ?? ""}
                         onValueChange={(value) => handlePartnerSelect(value, index, 'player2_id')}
                       >
-                        <SelectTrigger className="w-full md:w-[180px]">
+                        <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select Player 2" />
                         </SelectTrigger>
                         <SelectContent>
@@ -872,7 +876,7 @@ export default function AdminPage() {
           </Card>
 
           {/* Daily Photos */}
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Daily Photos for {displayDate}</CardTitle>
@@ -884,7 +888,7 @@ export default function AdminPage() {
                 <div className="relative overflow-hidden rounded-lg bg-orange-50">
                   <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory p-4">
                     {photos.map((photo, i) => (
-                      <div key={i} className="flex-none w-full max-w-md snap-center">
+                      <div key={i} className="flex-none w-full max-w-xs sm:max-w-sm md:max-w-md snap-center">
                         <div className="relative aspect-[4/3] rounded-lg overflow-hidden group">
                           <img 
                             src={photo.url} 
@@ -901,7 +905,7 @@ export default function AdminPage() {
                                 disabled={!!deletingPhotoId}
                               >
                                 <Pencil className="h-4 w-4 mr-1" />
-                                Edit
+                                <span className="hidden sm:inline">Edit</span>
                               </Button>
                               <Button 
                                 variant="destructive" 
@@ -914,7 +918,7 @@ export default function AdminPage() {
                                 ) : (
                                   <Trash className="h-4 w-4 mr-1" />
                                 )}
-                                Delete
+                                <span className="hidden sm:inline">Delete</span>
                               </Button>
                             </div>
                           </div>
@@ -932,7 +936,7 @@ export default function AdminPage() {
           </Card>
 
           {/* Photo Upload */}
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle>
                 {editPhotoId ? 'Replace Photo' : 'Upload Photo'} for {displayDate}
@@ -941,9 +945,9 @@ export default function AdminPage() {
                 {editPhotoId ? 'Replace an existing photo' : 'Upload a new photo for today\'s gathering'}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="overflow-hidden">
               <div className="space-y-4">
-                <div className="grid w-full max-w-sm items-center gap-1.5">
+                <div className="w-full items-center gap-1.5">
                   <label htmlFor="photo-upload" className="text-sm font-medium">
                     Photo
                   </label>
@@ -951,18 +955,18 @@ export default function AdminPage() {
                     id="photo-upload"
                     type="file"
                     accept="image/*"
-                    className="rounded-md border border-input p-2"
+                    className="rounded-md border border-input p-2 w-full text-sm"
                     onChange={handlePhotoUpload}
                   />
                 </div>
                 
                 {photo && (
                   <div className="mt-2">
-                    <p className="text-sm">Selected: {photo.name}</p>
+                    <p className="text-sm truncate">Selected: {photo.name}</p>
                   </div>
                 )}
                 
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-2">
                   {editPhotoId ? (
                     <>
                       <Button 
@@ -973,7 +977,7 @@ export default function AdminPage() {
                           }
                         }} 
                         disabled={!photo || uploadingPhoto}
-                        className="flex-1"
+                        className="flex-1 min-w-[120px]"
                       >
                         {uploadingPhoto ? (
                           <>
@@ -990,8 +994,7 @@ export default function AdminPage() {
                           const fileInput = document.getElementById('photo-upload') as HTMLInputElement;
                           if (fileInput) fileInput.value = '';
                         }}
-                        disabled={uploadingPhoto}
-                        className="flex-1"
+                        className="min-w-[100px]"
                       >
                         Cancel
                       </Button>
@@ -1000,7 +1003,7 @@ export default function AdminPage() {
                     <Button 
                       onClick={uploadPhoto} 
                       disabled={!photo || uploadingPhoto}
-                      className="w-full"
+                      className="w-full sm:w-auto"
                     >
                       {uploadingPhoto ? (
                         <>
