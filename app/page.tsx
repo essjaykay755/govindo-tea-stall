@@ -11,7 +11,7 @@ export default function Home() {
           <div className="space-y-3">
             <p className="text-lg font-medium text-orange-600 tracking-wide uppercase">welcome to</p>
             <h1 className="font-heading text-4xl font-bold text-orange-800 sm:text-7xl tracking-wider uppercase px-4">
-              Govindo Tea Stall
+              GOVINDO TEA STALL
             </h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mt-6 leading-relaxed px-4">

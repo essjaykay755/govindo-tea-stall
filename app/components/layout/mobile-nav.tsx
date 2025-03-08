@@ -7,6 +7,8 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/components/auth/AuthContext"
+import { LoginButton } from "@/components/auth/LoginButton"
 
 const navItems = [
   {
@@ -38,6 +40,7 @@ const navItems = [
 
 export function MobileNav() {
   const pathname = usePathname()
+  const { isAdmin } = useAuth()
 
   return (
     <div className="flex items-center md:hidden">
@@ -54,12 +57,21 @@ export function MobileNav() {
               <div className="flex items-center gap-3 pt-4">
                 <Coffee className="h-8 w-8 text-orange-600" />
                 <SheetTitle className="text-xl font-heading font-semibold text-orange-800">
-                  Govindo Tea Stall
+                  GOVINDO TEA STALL
                 </SheetTitle>
               </div>
             </SheetHeader>
             <div className="flex-1 overflow-y-auto px-7 py-8">
               <div className="flex flex-col space-y-2">
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    className="flex items-center gap-3 rounded-lg bg-orange-100 px-3 py-2.5 text-base font-medium text-orange-800 transition-colors mb-4"
+                  >
+                    <Coffee className="h-5 w-5" />
+                    Admin
+                  </Link>
+                )}
                 {navItems.map((item) => {
                   const Icon = item.icon
                   return (
@@ -78,6 +90,11 @@ export function MobileNav() {
                     </Link>
                   )
                 })}
+                <div className="mt-6 pt-6 border-t border-orange-100">
+                  <div className="flex justify-center">
+                    <LoginButton className="w-full py-2.5 text-base" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -86,7 +103,7 @@ export function MobileNav() {
       <Link href="/" className="flex items-center space-x-2">
         <Coffee className="h-6 w-6 text-orange-600" />
         <span className="font-heading font-semibold text-lg text-orange-800">
-          Govindo Tea Stall
+          GOVINDO TEA STALL
         </span>
       </Link>
     </div>

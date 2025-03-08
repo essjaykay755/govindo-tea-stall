@@ -18,7 +18,7 @@ export function SiteHeader() {
           <Link href="/" className="hidden md:flex items-center space-x-2">
             <Coffee className="h-6 w-6 text-orange-600" />
             <span className="font-heading font-semibold text-lg text-orange-800">
-              Govindo Tea Stall
+              GOVINDO TEA STALL
             </span>
           </Link>
         </div>
@@ -27,12 +27,14 @@ export function SiteHeader() {
           {isAdmin && (
             <Link 
               href="/admin" 
-              className="hidden sm:inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800"
             >
               Admin
             </Link>
           )}
-          <LoginButton />
+          <div className="hidden md:block">
+            <LoginButton />
+          </div>
         </div>
       </div>
     </header>

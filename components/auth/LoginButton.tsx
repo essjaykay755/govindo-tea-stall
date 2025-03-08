@@ -3,8 +3,13 @@
 import { useAuth } from '@/components/auth/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LogIn, LogOut } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-export function LoginButton() {
+interface LoginButtonProps {
+  className?: string;
+}
+
+export function LoginButton({ className }: LoginButtonProps = {}) {
   const { user, signInWithGoogle, signOut } = useAuth();
 
   if (user) {
@@ -13,7 +18,7 @@ export function LoginButton() {
         variant="outline"
         size="sm"
         onClick={signOut}
-        className="flex items-center gap-2"
+        className={cn("flex items-center gap-2", className)}
       >
         <LogOut className="h-4 w-4" />
         <span>Sign Out</span>
@@ -26,7 +31,7 @@ export function LoginButton() {
       variant="default"
       size="sm"
       onClick={signInWithGoogle}
-      className="flex items-center gap-2"
+      className={cn("flex items-center gap-2", className)}
     >
       <LogIn className="h-4 w-4" />
       <span>Sign In with Google</span>
