@@ -222,16 +222,16 @@ export default function TournamentPage() {
           const { data: settingsData, error: settingsError } = await supabase
             .from('tournament_settings')
             .select('*')
-            .eq('id', 1)
+            .limit(1)
             .single();
           
           if (settingsError) {
             // If no settings exist yet, create default settings
             console.warn('Error fetching tournament settings:', settingsError);
             
-            // Set default settings in state
+            // Set default settings in state with proper UUID
             const defaultSettings = {
-              id: '1',
+              id: crypto.randomUUID(), // Generate proper UUID instead of '1'
               start_date: new Date().toISOString(),
               end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
               status: 'upcoming' as const
@@ -257,9 +257,9 @@ export default function TournamentPage() {
         } catch (settingsCatchError) {
           console.error('Exception in tournament settings fetch:', settingsCatchError);
           
-          // Set default settings as fallback
+          // Set default settings as fallback with proper UUID
           setTournamentSettings({
-            id: '1',
+            id: crypto.randomUUID(), // Generate proper UUID instead of '1'
             start_date: new Date().toISOString(),
             end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
             status: 'upcoming' as const
