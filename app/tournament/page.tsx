@@ -14,7 +14,7 @@ interface Team {
   name: string;
   player1_id: string;
   player2_id: string;
-  group?: string;
+  group_name?: string;
   player1?: TeamMember;
   player2?: TeamMember;
   stage?: string;
@@ -32,7 +32,7 @@ interface Match {
   team2_id: string;
   date: string;
   stage: 'group' | 'super_six' | 'semifinal' | 'final';
-  group?: string;
+  group_name?: string;
   winner_id?: string;
   scores?: {
     team1_score: number;
@@ -135,11 +135,11 @@ export default function TournamentPage() {
 
   // Group teams by their group
   const teamsByGroup = teams.reduce((acc, team) => {
-    if (team.group) {
-      if (!acc[team.group]) {
-        acc[team.group] = [];
+    if (team.group_name) {
+      if (!acc[team.group_name]) {
+        acc[team.group_name] = [];
       }
-      acc[team.group].push(team);
+      acc[team.group_name].push(team);
     }
     return acc;
   }, {} as Record<string, Team[]>);
@@ -159,24 +159,36 @@ export default function TournamentPage() {
           .from('members')
           .select('id, name, image');
         
-        if (membersError) throw membersError;
+        if (membersError) {
+          console.warn('Error fetching members:', membersError);
+        }
         setMembers(membersData || []);
 
         // Fetch teams
         const { data: teamsData, error: teamsError } = await supabase
           .from('tournament_teams')
-          .select('id, name, player1_id, player2_id, group, stage');
+          .select('id, name, player1_id, player2_id, group_name, stage');
         
-        if (teamsError) throw teamsError;
-        setTeams(teamsData || []);
+        if (teamsError) {
+          // If table doesn't exist yet, just use empty array
+          console.warn('Error fetching teams:', teamsError);
+          setTeams([]);
+        } else {
+          setTeams(teamsData || []);
+        }
 
         // Fetch matches
         const { data: matchesData, error: matchesError } = await supabase
           .from('tournament_matches')
-          .select('id, team1_id, team2_id, date, stage, group, winner_id, scores');
+          .select('id, team1_id, team2_id, date, stage, group_name, winner_id, scores');
         
-        if (matchesError) throw matchesError;
-        setMatches(matchesData || []);
+        if (matchesError) {
+          // If table doesn't exist yet, just use empty array
+          console.warn('Error fetching matches:', matchesError);
+          setMatches([]);
+        } else {
+          setMatches(matchesData || []);
+        }
 
         // Fetch tournament settings
         const { data: settingsData, error: settingsError } = await supabase
@@ -184,10 +196,19 @@ export default function TournamentPage() {
           .select('id, start_date, end_date, status')
           .single();
         
-        if (settingsError && settingsError.code !== 'PGRST116') throw settingsError;
-        setTournamentSettings(settingsData || null);
+        if (settingsError) {
+          // If no settings exist yet, use defaults
+          console.warn('Error fetching tournament settings:', settingsError);
+          setTournamentSettings(null);
+        } else {
+          setTournamentSettings(settingsData);
+        }
       } catch (error) {
         console.error('Error fetching tournament data:', error);
+        // Continue with empty state
+        setTeams([]);
+        setMatches([]);
+        setTournamentSettings(null);
       } finally {
         setLoading(false);
       }
@@ -220,6 +241,21 @@ export default function TournamentPage() {
           <p className="text-muted-foreground mt-2">Join us for an exciting carrom competition!</p>
         </div>
       </div>
+
+      {/* No Data Message */}
+      {!loading && teams.length === 0 && matches.length === 0 && (
+        <Card className="bg-orange-50 border-orange-200">
+          <CardContent className="p-6">
+            <div className="flex flex-col items-center justify-center text-center gap-2">
+              <Calendar className="h-8 w-8 text-orange-600 mb-2" />
+              <h3 className="text-xl font-medium text-orange-800">Tournament Coming Soon</h3>
+              <p className="text-muted-foreground">
+                The tournament details are being finalized. Check back later for teams and match schedules!
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tournament Rules Card */}
       <Card className="bg-gradient-to-r from-orange-50 to-amber-50 border-orange-200">
@@ -351,12 +387,12 @@ export default function TournamentPage() {
                       </ul>
                       
                       {/* Group Matches */}
-                      {groupMatches.filter(match => match.group === group).length > 0 && (
+                      {groupMatches.filter((match: Match) => match.group_name === group).length > 0 && (
                         <div className="mt-4">
                           <h4 className="text-sm font-medium mb-2">Matches:</h4>
                           <div className="space-y-2">
                             {groupMatches
-                              .filter(match => match.group === group)
+                              .filter((match: Match) => match.group_name === group)
                               .map(match => (
                                 <Card key={match.id || ''} className="p-2 bg-orange-100">
                                   <MatchCard match={match} getTeamName={getTeamName} />

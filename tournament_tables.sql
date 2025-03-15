@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.tournament_teams (
     name TEXT NOT NULL,
     player1_id UUID NOT NULL REFERENCES public.members(id),
     player2_id UUID NOT NULL REFERENCES public.members(id),
-    group TEXT,
+    group_name TEXT,
     stage TEXT DEFAULT 'group',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.tournament_matches (
     team2_id UUID NOT NULL REFERENCES public.tournament_teams(id) ON DELETE CASCADE,
     date DATE NOT NULL,
     stage TEXT NOT NULL,
-    group TEXT,
+    group_name TEXT,
     winner_id UUID REFERENCES public.tournament_teams(id),
     scores JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
@@ -35,10 +35,10 @@ CREATE TABLE IF NOT EXISTS public.tournament_settings (
 );
 
 -- Create indexes
-CREATE INDEX IF NOT EXISTS tournament_teams_group_idx ON public.tournament_teams(group);
+CREATE INDEX IF NOT EXISTS tournament_teams_group_idx ON public.tournament_teams(group_name);
 CREATE INDEX IF NOT EXISTS tournament_teams_stage_idx ON public.tournament_teams(stage);
 CREATE INDEX IF NOT EXISTS tournament_matches_stage_idx ON public.tournament_matches(stage);
-CREATE INDEX IF NOT EXISTS tournament_matches_group_idx ON public.tournament_matches(group);
+CREATE INDEX IF NOT EXISTS tournament_matches_group_idx ON public.tournament_matches(group_name);
 CREATE INDEX IF NOT EXISTS tournament_matches_date_idx ON public.tournament_matches(date);
 
 -- Set up Row Level Security (RLS)

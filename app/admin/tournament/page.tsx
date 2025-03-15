@@ -42,7 +42,7 @@ interface Team {
   name: string;
   player1_id: string;
   player2_id: string;
-  group?: string;
+  group_name?: string;
   stage?: string;
 }
 
@@ -58,7 +58,7 @@ interface Match {
   team2_id: string;
   date: string;
   stage: 'group' | 'super_six' | 'semifinal' | 'final';
-  group?: string;
+  group_name?: string;
   winner_id?: string;
   scores?: {
     team1_score: number;
@@ -91,6 +91,7 @@ export default function TournamentManagementPage() {
   const [newTeamPlayer1, setNewTeamPlayer1] = useState("");
   const [newTeamPlayer2, setNewTeamPlayer2] = useState("");
   const [newTeamGroup, setNewTeamGroup] = useState("");
+  const [newTeamStage, setNewTeamStage] = useState("group");
   const [addingTeam, setAddingTeam] = useState(false);
   
   // Match management state
@@ -137,24 +138,34 @@ export default function TournamentManagementPage() {
           .select('id, name, image')
           .order('name');
         
-        if (membersError) throw membersError;
+        if (membersError) {
+          console.warn('Error fetching members:', membersError);
+        }
         setMembers(membersData || []);
         
         // Fetch teams
         const { data: teamsData, error: teamsError } = await supabase
           .from('tournament_teams')
-          .select('id, name, player1_id, player2_id, group, stage');
+          .select('id, name, player1_id, player2_id, group_name, stage');
         
-        if (teamsError) throw teamsError;
-        setTeams(teamsData || []);
+        if (teamsError) {
+          console.warn('Error fetching teams:', teamsError);
+          setTeams([]);
+        } else {
+          setTeams(teamsData || []);
+        }
         
         // Fetch matches
         const { data: matchesData, error: matchesError } = await supabase
           .from('tournament_matches')
-          .select('id, team1_id, team2_id, date, stage, group, winner_id, scores');
+          .select('id, team1_id, team2_id, date, stage, group_name, winner_id, scores');
         
-        if (matchesError) throw matchesError;
-        setMatches(matchesData || []);
+        if (matchesError) {
+          console.warn('Error fetching matches:', matchesError);
+          setMatches([]);
+        } else {
+          setMatches(matchesData || []);
+        }
         
         // Fetch tournament settings
         const { data: settingsData, error: settingsError } = await supabase
@@ -162,41 +173,43 @@ export default function TournamentManagementPage() {
           .select('id, start_date, end_date, status')
           .single();
         
-        if (settingsError && settingsError.code !== 'PGRST116') {
-          // If table exists but no data, create default
-          if (settingsError.code === 'PGRST116') {
-            setTournamentSettings({
-              id: '1',
-              start_date: format(new Date(), 'yyyy-MM-dd'),
-              end_date: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
-              status: 'upcoming'
-            });
-          } else {
-            throw settingsError;
-          }
+        // Use default settings if none exist yet
+        const defaultSettings = {
+          id: '1',
+          start_date: format(new Date(), 'yyyy-MM-dd'),
+          end_date: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+          status: 'upcoming' as const
+        };
+        
+        if (settingsError) {
+          console.warn('Error fetching tournament settings:', settingsError);
+          setTournamentSettings(defaultSettings);
         } else {
-          setTournamentSettings(settingsData || {
-            id: '1',
-            start_date: format(new Date(), 'yyyy-MM-dd'),
-            end_date: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
-            status: 'upcoming'
-          });
+          setTournamentSettings(settingsData || defaultSettings);
         }
         
         // Set form values from tournament settings
-        if (settingsData) {
-          setTournamentStartDate(settingsData.start_date);
-          setTournamentEndDate(settingsData.end_date);
-          setTournamentStatus(settingsData.status);
-        }
+        setTournamentStartDate(settingsData?.start_date || defaultSettings.start_date);
+        setTournamentEndDate(settingsData?.end_date || defaultSettings.end_date);
+        setTournamentStatus(settingsData?.status || defaultSettings.status);
         
       } catch (error) {
         console.error('Error fetching data:', error);
         toast({
           title: "Error",
-          description: "Failed to load tournament data. Please try again later.",
+          description: "Failed to load some tournament data. You can still add teams and matches.",
           variant: "destructive",
           duration: 5000,
+        });
+        
+        // Set defaults
+        setTeams([]);
+        setMatches([]);
+        setTournamentSettings({
+          id: '1',
+          start_date: format(new Date(), 'yyyy-MM-dd'),
+          end_date: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+          status: 'upcoming'
         });
       } finally {
         setLoadingData(false);
@@ -208,36 +221,35 @@ export default function TournamentManagementPage() {
   
   // Function to add a new team
   const handleAddTeam = async () => {
-    if (!newTeamName || !newTeamPlayer1 || !newTeamPlayer2 || !newTeamGroup) {
+    if (!newTeamName || !newTeamPlayer1 || !newTeamPlayer2 || !newTeamStage) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all team details.",
+        title: "Missing information",
+        description: "Please fill in all fields to add a team.",
         variant: "destructive",
-      });
+      })
       return;
     }
-    
-    if (newTeamPlayer1 === newTeamPlayer2) {
+
+    if (newTeamStage === 'group' && !newTeamGroup) {
       toast({
-        title: "Invalid Selection",
-        description: "A player cannot be on the same team twice.",
+        title: "Group required",
+        description: "Please select a group for this team.",
         variant: "destructive",
-      });
+      })
       return;
     }
+
+    const newTeam: Team = {
+      name: newTeamName,
+      player1_id: newTeamPlayer1,
+      player2_id: newTeamPlayer2,
+      stage: newTeamStage,
+      group_name: newTeamGroup || undefined,
+    };
     
     setAddingTeam(true);
     
     try {
-      // Create the team object
-      const newTeam: Team = {
-        name: newTeamName,
-        player1_id: newTeamPlayer1,
-        player2_id: newTeamPlayer2,
-        group: newTeamGroup,
-        stage: 'group' // Default to group stage when creating a team
-      };
-      
       // Save to database
       const { data, error } = await supabase
         .from('tournament_teams')
@@ -260,6 +272,7 @@ export default function TournamentManagementPage() {
       setNewTeamPlayer1("");
       setNewTeamPlayer2("");
       setNewTeamGroup("");
+      setNewTeamStage("group");
       setShowAddTeamDialog(false);
       
     } catch (error) {
@@ -278,43 +291,33 @@ export default function TournamentManagementPage() {
   const handleAddMatch = async () => {
     if (!newMatchTeam1 || !newMatchTeam2 || !newMatchDate || !newMatchStage) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in all match details.",
+        title: "Missing information",
+        description: "Please fill in all fields to add a match.",
         variant: "destructive",
-      });
+      })
       return;
     }
-    
-    if (newMatchTeam1 === newMatchTeam2) {
-      toast({
-        title: "Invalid Selection",
-        description: "A team cannot play against itself.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
+
     if (newMatchStage === 'group' && !newMatchGroup) {
       toast({
-        title: "Missing Group",
-        description: "Please select a group for the group stage match.",
+        title: "Group required",
+        description: "Please select a group for this match.",
         variant: "destructive",
-      });
+      })
       return;
     }
+
+    const newMatch: Match = {
+      team1_id: newMatchTeam1,
+      team2_id: newMatchTeam2,
+      date: newMatchDate,
+      stage: newMatchStage,
+      group_name: newMatchGroup || undefined,
+    };
     
     setAddingMatch(true);
     
     try {
-      // Create the match object
-      const newMatch: Match = {
-        team1_id: newMatchTeam1,
-        team2_id: newMatchTeam2,
-        date: newMatchDate,
-        stage: newMatchStage,
-        group: newMatchStage === 'group' ? newMatchGroup : undefined
-      };
-      
       // Save to database
       const { data, error } = await supabase
         .from('tournament_matches')
@@ -741,7 +744,7 @@ export default function TournamentManagementPage() {
                       <div className="flex justify-between items-start">
                         <div>
                           <CardTitle>{team.name}</CardTitle>
-                          <CardDescription>Group {team.group}</CardDescription>
+                          <CardDescription>Group {team.group_name}</CardDescription>
                         </div>
                         <div className="flex items-center space-x-2">
                           <Button variant="ghost" size="icon">
@@ -937,7 +940,7 @@ export default function TournamentManagementPage() {
                             <CardHeader className="pb-2">
                               <div className="flex justify-between items-start">
                                 <CardTitle className="text-lg">
-                                  {stage === 'group' && `Group ${match.group}`}
+                                  {stage === 'group' && `Group ${match.group_name}`}
                                 </CardTitle>
                                 <div className="flex items-center space-x-2">
                                   <Button variant="ghost" size="icon">
