@@ -4,6 +4,15 @@ import "./globals.css";
 import { SiteHeader } from "./components/layout/site-header";
 import { AuthProvider } from "@/components/auth/AuthContext";
 import { ToastProvider } from "@/components/ui/use-toast";
+import { ensureTournamentSettings } from "@/lib/tournamentHelpers";
+
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    ensureTournamentSettings().catch(error => {
+      console.error('Failed to initialize tournament settings:', error);
+    });
+  }, 1000);
+}
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -29,6 +38,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script src="/share-modal.js" async></script>
+      </head>
       <body className={`${jakarta.variable} ${outfit.variable} font-sans antialiased`}>
         <AuthProvider>
           <ToastProvider>
