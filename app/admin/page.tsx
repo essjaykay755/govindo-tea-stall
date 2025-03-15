@@ -1039,7 +1039,10 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => setShowAttendanceTab(true)}>Manage</Button>
+              <Button variant="outline" size="sm" onClick={() => {
+                console.log("Attendance management button clicked");
+                // You could use router navigation here if needed
+              }}>Manage</Button>
             </div>
           </CardContent>
         </Card>
@@ -1055,7 +1058,10 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent className="pt-0">
             <div className="flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => setShowPhotosTab(true)}>Manage</Button>
+              <Button variant="outline" size="sm" onClick={() => {
+                console.log("Photos management button clicked");
+                // You could use router navigation here if needed
+              }}>Manage</Button>
             </div>
           </CardContent>
         </Card>

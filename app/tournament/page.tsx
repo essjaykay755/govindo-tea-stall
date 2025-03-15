@@ -52,7 +52,7 @@ export default function TournamentPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="group">Group Stage</TabsTrigger>
           <TabsTrigger value="super-six">Super Six</TabsTrigger>
-          <TabsTrigger value="finals">Semi-Finals & Finals</TabsTrigger>
+          <TabsTrigger value="finals">Finals</TabsTrigger>
         </TabsList>
         
         {/* Overview Tab */}
