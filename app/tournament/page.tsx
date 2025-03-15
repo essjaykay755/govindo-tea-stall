@@ -10,7 +10,7 @@ import { format } from "date-fns"
 
 // Define interfaces for tournament data
 interface Team {
-  id: string;
+  id?: string;
   name: string;
   player1_id: string;
   player2_id: string;
@@ -27,7 +27,7 @@ interface TeamMember {
 }
 
 interface Match {
-  id: string;
+  id?: string;
   team1_id: string;
   team2_id: string;
   date: string;
@@ -334,7 +334,7 @@ export default function TournamentPage() {
                       <ul className="space-y-2">
                         {teamsByGroup[group] ? (
                           teamsByGroup[group].map((team) => (
-                            <li key={team.id} className="text-sm pb-2 border-b">
+                            <li key={team.id || ''} className="text-sm pb-2 border-b">
                               {team.name}{' '}
                               <span className="text-xs text-muted-foreground">
                                 ({getMemberName(team.player1_id)}, {getMemberName(team.player2_id)})
@@ -358,7 +358,7 @@ export default function TournamentPage() {
                             {groupMatches
                               .filter(match => match.group === group)
                               .map(match => (
-                                <Card key={match.id} className="p-2 bg-orange-100">
+                                <Card key={match.id || ''} className="p-2 bg-orange-100">
                                   <MatchCard match={match} getTeamName={getTeamName} />
                                 </Card>
                               ))
@@ -395,7 +395,7 @@ export default function TournamentPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {teams.filter(team => team.stage === 'super_six').length > 0 ? (
                     teams.filter(team => team.stage === 'super_six').map((team) => (
-                      <Card key={team.id} className="bg-orange-50 p-4">
+                      <Card key={team.id || ''} className="bg-orange-50 p-4">
                         <div className="text-center">
                           <div className="rounded-full bg-orange-200 h-10 w-10 flex items-center justify-center mx-auto mb-2">
                             <Users className="h-5 w-5 text-orange-800" />
@@ -428,7 +428,7 @@ export default function TournamentPage() {
                     <h3 className="text-lg font-medium mb-3">Super Six Matches</h3>
                     <div className="grid md:grid-cols-2 gap-4">
                       {superSixMatches.map(match => (
-                        <Card key={match.id} className="bg-orange-50 p-4">
+                        <Card key={match.id || ''} className="bg-orange-50 p-4">
                           <MatchCard match={match} getTeamName={getTeamName} />
                         </Card>
                       ))}
@@ -463,7 +463,7 @@ export default function TournamentPage() {
                   <div className="grid md:grid-cols-2 gap-4">
                     {semifinalMatches.length > 0 ? (
                       semifinalMatches.map((match) => (
-                        <Card key={match.id} className="bg-orange-50 p-4">
+                        <Card key={match.id || ''} className="bg-orange-50 p-4">
                           <MatchCard match={match} getTeamName={getTeamName} />
                         </Card>
                       ))
@@ -510,7 +510,7 @@ export default function TournamentPage() {
                   <h3 className="font-medium text-orange-800 mb-2">Final</h3>
                   {finalMatches.length > 0 ? (
                     finalMatches.map((match) => (
-                      <Card key={match.id} className="bg-orange-100 p-4 border-orange-300">
+                      <Card key={match.id || ''} className="bg-orange-100 p-4 border-orange-300">
                         <FinalMatchCard match={match} getTeamName={getTeamName} />
                       </Card>
                     ))

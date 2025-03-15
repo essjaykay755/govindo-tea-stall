@@ -470,7 +470,7 @@ export default function TournamentManagementPage() {
       if (error) throw error;
       
       // Update local state
-      setTeams(teams.filter(team => team.id !== teamId));
+      setTeams(teams.filter(team => team.id && team.id !== teamId));
       
       toast({
         title: "Team Deleted",
@@ -500,7 +500,7 @@ export default function TournamentManagementPage() {
       if (error) throw error;
       
       // Update local state
-      setMatches(matches.filter(match => match.id !== matchId));
+      setMatches(matches.filter(match => match.id && match.id !== matchId));
       
       toast({
         title: "Match Deleted",
@@ -736,7 +736,7 @@ export default function TournamentManagementPage() {
                 const player2 = members.find(m => m.id === team.player2_id);
                 
                 return (
-                  <Card key={team.id}>
+                  <Card key={team.id || ''}>
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <div>
@@ -810,7 +810,7 @@ export default function TournamentManagementPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {teams.map((team) => (
-                          <SelectItem key={team.id} value={team.id}>
+                          <SelectItem key={team.id || ''} value={team.id || ''}>
                             {team.name}
                           </SelectItem>
                         ))}
@@ -826,7 +826,7 @@ export default function TournamentManagementPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {teams.map((team) => (
-                          <SelectItem key={team.id} value={team.id}>
+                          <SelectItem key={team.id || ''} value={team.id || ''}>
                             {team.name}
                           </SelectItem>
                         ))}
@@ -933,7 +933,7 @@ export default function TournamentManagementPage() {
                         const matchDate = new Date(match.date);
                         
                         return (
-                          <Card key={match.id}>
+                          <Card key={match.id || ''}>
                             <CardHeader className="pb-2">
                               <div className="flex justify-between items-start">
                                 <CardTitle className="text-lg">
