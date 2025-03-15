@@ -14,7 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash,
-  Pencil
+  Pencil,
+  Trophy
 } from "lucide-react";
 import { useAuth } from "@/components/auth/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -737,6 +738,12 @@ export default function AdminPage() {
               Member Management
             </Button>
           </Link>
+          <Link href="/admin/tournament" className="flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0 ml-2">
+            <Button variant="outline" className="flex items-center gap-2 w-full">
+              <Trophy className="h-4 w-4" />
+              Tournament Management
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -1019,6 +1026,76 @@ export default function AdminPage() {
           </Card>
         </>
       )}
+
+      <div className="grid gap-6 md:grid-cols-2 mt-8">
+        {/* Attendance Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Users2 className="h-5 w-5 text-orange-600" />
+              Attendance & Partners
+            </CardTitle>
+            <CardDescription>Manage player attendance and partner assignments</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => setShowAttendanceTab(true)}>Manage</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Photo Upload Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Upload className="h-5 w-5 text-orange-600" />
+              Photo Gallery
+            </CardTitle>
+            <CardDescription>Upload and manage photos for {displayDate}</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => setShowPhotosTab(true)}>Manage</Button>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Member Management Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <UserCog className="h-5 w-5 text-orange-600" />
+              Members
+            </CardTitle>
+            <CardDescription>Add, edit, or remove members</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex justify-end">
+              <Link href="/admin/members" className="flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+                <Button variant="outline" size="sm">Manage</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Tournament Management Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Trophy className="h-5 w-5 text-orange-600" />
+              Tournament
+            </CardTitle>
+            <CardDescription>Manage teams, players, and tournament matches</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex justify-end">
+              <Link href="/admin/tournament" className="flex-shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
+                <Button variant="outline" size="sm">Manage</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 } 
