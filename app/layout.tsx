@@ -29,9 +29,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script src="/share-modal.js" defer></script>
-      </head>
       <body className={`${jakarta.variable} ${outfit.variable} font-sans antialiased`}>
         <AuthProvider>
           <ToastProvider>

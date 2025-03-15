@@ -133,31 +133,26 @@ export default function TournamentPage() {
   const [tournamentSettings, setTournamentSettings] = useState<TournamentSettings | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Add this useEffect to fix the share button issue
-  useEffect(() => {
-    // This handles the share button functionality safely
-    const shareButton = document.querySelector('.share-button');
-    if (shareButton) {
-      const handleShare = () => {
-        if (navigator.share) {
-          navigator.share({
-            title: 'Govindo Tea Stall - Tournament',
-            text: 'Check out this tournament!',
-            url: window.location.href,
-          })
-          .catch(err => console.error('Error sharing:', err));
-        } else {
-          // Fallback for browsers that don't support Web Share API
-          console.log('Web Share API not supported');
-        }
-      };
-      
-      shareButton.addEventListener('click', handleShare);
-      return () => {
-        shareButton.removeEventListener('click', handleShare);
-      };
+  // Handle share button click directly within the component
+  const handleShare = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    
+    const shareData = {
+      title: 'Govindo Tea Stall - Tournament',
+      text: 'Check out this tournament!',
+      url: window.location.href
+    };
+    
+    if (navigator.share) {
+      navigator.share(shareData)
+        .then(() => console.log('Shared successfully'))
+        .catch(err => console.error('Error sharing:', err));
+    } else {
+      // Fallback for browsers without Web Share API
+      console.log('Web Share API not supported');
+      alert('Copy this link to share: ' + window.location.href);
     }
-  }, []);
+  };
 
   // Group teams by their group
   const teamsByGroup = teams.reduce((acc, team) => {
@@ -218,25 +213,32 @@ export default function TournamentPage() {
 
         // Improved error handling for tournament settings
         try {
-          // Try to fetch with select *
+          // Try to fetch all settings and use the first one if any exist
           const { data: settingsData, error: settingsError } = await supabase
             .from('tournament_settings')
-            .select('*')
-            .limit(1)
-            .single();
+            .select('*');
           
-          if (settingsError) {
+          if (settingsError || !settingsData || settingsData.length === 0) {
             // If no settings exist yet, create default settings
-            console.warn('Error fetching tournament settings:', settingsError);
+            console.warn('No tournament settings found, creating defaults');
+            
+            // Use a standard UUID format string instead of crypto.randomUUID()
+            // which might not be available in all environments
+            const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+              const r = Math.random() * 16 | 0,
+                    v = c === 'x' ? r : (r & 0x3 | 0x8);
+              return v.toString(16);
+            });
             
             // Set default settings in state with proper UUID
             const defaultSettings = {
-              id: crypto.randomUUID(), // Generate proper UUID instead of '1'
+              id: uuid,
               start_date: new Date().toISOString(),
               end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
               status: 'upcoming' as const
             };
             
+            console.log('Created default settings with UUID:', uuid);
             setTournamentSettings(defaultSettings);
             
             // Try to insert default settings
@@ -247,23 +249,37 @@ export default function TournamentPage() {
                 
               if (insertError) {
                 console.warn('Error creating default tournament settings:', insertError);
+              } else {
+                console.log('Successfully inserted default tournament settings');
               }
             } catch (insertCatchError) {
               console.error('Exception creating default tournament settings:', insertCatchError);
             }
           } else {
-            setTournamentSettings(settingsData);
+            // Use the first settings found
+            console.log('Found tournament settings:', settingsData[0]);
+            setTournamentSettings(settingsData[0]);
           }
         } catch (settingsCatchError) {
           console.error('Exception in tournament settings fetch:', settingsCatchError);
           
+          // Generate UUID for fallback settings
+          const fallbackUuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0,
+                  v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+          });
+          
           // Set default settings as fallback with proper UUID
-          setTournamentSettings({
-            id: crypto.randomUUID(), // Generate proper UUID instead of '1'
+          const fallbackSettings = {
+            id: fallbackUuid,
             start_date: new Date().toISOString(),
             end_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
             status: 'upcoming' as const
-          });
+          };
+          
+          console.log('Using fallback settings with UUID:', fallbackUuid);
+          setTournamentSettings(fallbackSettings);
         }
       } catch (error) {
         console.error('Error fetching tournament data:', error);
@@ -649,7 +665,7 @@ export default function TournamentPage() {
           <p className="text-sm text-muted-foreground mb-4">Registration details and schedule will be announced soon.</p>
           <div className="flex space-x-3">
             <Button>Register Interest</Button>
-            <Button variant="outline" className="share-button">
+            <Button variant="outline" className="share-button" onClick={handleShare}>
               <span className="mr-2">Share</span>
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide-share">
                 <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
