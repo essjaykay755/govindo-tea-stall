@@ -38,11 +38,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 // Define interfaces for tournament data
 interface Team {
-  id: string;
+  id?: string;
   name: string;
   player1_id: string;
   player2_id: string;
   group?: string;
+  stage?: string;
 }
 
 interface TeamMember {
@@ -52,7 +53,7 @@ interface TeamMember {
 }
 
 interface Match {
-  id: string;
+  id?: string;
   team1_id: string;
   team2_id: string;
   date: string;
@@ -139,16 +140,55 @@ export default function TournamentManagementPage() {
         if (membersError) throw membersError;
         setMembers(membersData || []);
         
-        // Here we would fetch teams, matches, and tournament settings from the database
-        // For now, we'll use empty arrays and mock data
-        setTeams([]);
-        setMatches([]);
-        setTournamentSettings({
-          id: '1',
-          start_date: format(new Date(), 'yyyy-MM-dd'),
-          end_date: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
-          status: 'upcoming'
-        });
+        // Fetch teams
+        const { data: teamsData, error: teamsError } = await supabase
+          .from('tournament_teams')
+          .select('id, name, player1_id, player2_id, group, stage');
+        
+        if (teamsError) throw teamsError;
+        setTeams(teamsData || []);
+        
+        // Fetch matches
+        const { data: matchesData, error: matchesError } = await supabase
+          .from('tournament_matches')
+          .select('id, team1_id, team2_id, date, stage, group, winner_id, scores');
+        
+        if (matchesError) throw matchesError;
+        setMatches(matchesData || []);
+        
+        // Fetch tournament settings
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('tournament_settings')
+          .select('id, start_date, end_date, status')
+          .single();
+        
+        if (settingsError && settingsError.code !== 'PGRST116') {
+          // If table exists but no data, create default
+          if (settingsError.code === 'PGRST116') {
+            setTournamentSettings({
+              id: '1',
+              start_date: format(new Date(), 'yyyy-MM-dd'),
+              end_date: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+              status: 'upcoming'
+            });
+          } else {
+            throw settingsError;
+          }
+        } else {
+          setTournamentSettings(settingsData || {
+            id: '1',
+            start_date: format(new Date(), 'yyyy-MM-dd'),
+            end_date: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+            status: 'upcoming'
+          });
+        }
+        
+        // Set form values from tournament settings
+        if (settingsData) {
+          setTournamentStartDate(settingsData.start_date);
+          setTournamentEndDate(settingsData.end_date);
+          setTournamentStatus(settingsData.status);
+        }
         
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -189,17 +229,27 @@ export default function TournamentManagementPage() {
     setAddingTeam(true);
     
     try {
-      // Here we would add the team to the database
-      // For now, we'll just update our local state
+      // Create the team object
       const newTeam: Team = {
-        id: Date.now().toString(),
         name: newTeamName,
         player1_id: newTeamPlayer1,
         player2_id: newTeamPlayer2,
-        group: newTeamGroup
+        group: newTeamGroup,
+        stage: 'group' // Default to group stage when creating a team
       };
       
-      setTeams([...teams, newTeam]);
+      // Save to database
+      const { data, error } = await supabase
+        .from('tournament_teams')
+        .insert(newTeam)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Update local state with the returned data
+      setTeams([...teams, data]);
+      
       toast({
         title: "Team Added",
         description: `${newTeamName} has been added to the tournament.`,
@@ -256,10 +306,8 @@ export default function TournamentManagementPage() {
     setAddingMatch(true);
     
     try {
-      // Here we would add the match to the database
-      // For now, we'll just update our local state
+      // Create the match object
       const newMatch: Match = {
-        id: Date.now().toString(),
         team1_id: newMatchTeam1,
         team2_id: newMatchTeam2,
         date: newMatchDate,
@@ -267,11 +315,50 @@ export default function TournamentManagementPage() {
         group: newMatchStage === 'group' ? newMatchGroup : undefined
       };
       
-      setMatches([...matches, newMatch]);
+      // Save to database
+      const { data, error } = await supabase
+        .from('tournament_matches')
+        .insert(newMatch)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      // Update local state with the returned data
+      setMatches([...matches, data]);
+      
       toast({
         title: "Match Added",
         description: `New match has been scheduled for ${format(new Date(newMatchDate), 'MMMM d, yyyy')}.`,
       });
+      
+      // If the match is in super_six or later stages, update the teams' stage
+      if (newMatchStage !== 'group') {
+        // Get the teams involved in this match
+        const team1 = teams.find(t => t.id === newMatchTeam1);
+        const team2 = teams.find(t => t.id === newMatchTeam2);
+        
+        // Update team stages if needed
+        if (team1 && (!team1.stage || team1.stage === 'group')) {
+          await supabase
+            .from('tournament_teams')
+            .update({ stage: newMatchStage })
+            .eq('id', team1.id);
+          
+          // Update local state
+          setTeams(teams.map(t => t.id === team1.id ? { ...t, stage: newMatchStage } : t));
+        }
+        
+        if (team2 && (!team2.stage || team2.stage === 'group')) {
+          await supabase
+            .from('tournament_teams')
+            .update({ stage: newMatchStage })
+            .eq('id', team2.id);
+          
+          // Update local state
+          setTeams(teams.map(t => t.id === team2.id ? { ...t, stage: newMatchStage } : t));
+        }
+      }
       
       // Reset form
       setNewMatchTeam1("");
@@ -316,8 +403,7 @@ export default function TournamentManagementPage() {
     setIsEditingSettings(true);
     
     try {
-      // Here we would update the tournament settings in the database
-      // For now, we'll just update our local state
+      // Create the settings object
       const updatedSettings: TournamentSettings = {
         id: tournamentSettings?.id || '1',
         start_date: tournamentStartDate,
@@ -325,13 +411,38 @@ export default function TournamentManagementPage() {
         status: tournamentStatus
       };
       
-      setTournamentSettings(updatedSettings);
+      // Check if we have existing settings
+      if (tournamentSettings?.id) {
+        // Update existing settings
+        const { data, error } = await supabase
+          .from('tournament_settings')
+          .update({
+            start_date: tournamentStartDate,
+            end_date: tournamentEndDate,
+            status: tournamentStatus
+          })
+          .eq('id', tournamentSettings.id)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        setTournamentSettings(data);
+      } else {
+        // Insert new settings
+        const { data, error } = await supabase
+          .from('tournament_settings')
+          .insert(updatedSettings)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        setTournamentSettings(data);
+      }
+      
       toast({
         title: "Settings Saved",
         description: "Tournament settings have been updated.",
       });
-      
-      setIsEditingSettings(false);
       
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -340,7 +451,68 @@ export default function TournamentManagementPage() {
         description: "Failed to save settings. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setIsEditingSettings(false);
+    }
+  };
+
+  // Function to delete a team
+  const handleDeleteTeam = async (teamId: string) => {
+    if (!teamId) return;
+    
+    try {
+      // Delete from database
+      const { error } = await supabase
+        .from('tournament_teams')
+        .delete()
+        .eq('id', teamId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setTeams(teams.filter(team => team.id !== teamId));
+      
+      toast({
+        title: "Team Deleted",
+        description: "The team has been removed from the tournament.",
+      });
+    } catch (error) {
+      console.error('Error deleting team:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete team. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Function to delete a match
+  const handleDeleteMatch = async (matchId: string) => {
+    if (!matchId) return;
+    
+    try {
+      // Delete from database
+      const { error } = await supabase
+        .from('tournament_matches')
+        .delete()
+        .eq('id', matchId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setMatches(matches.filter(match => match.id !== matchId));
+      
+      toast({
+        title: "Match Deleted",
+        description: "The match has been removed from the schedule.",
+      });
+    } catch (error) {
+      console.error('Error deleting match:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete match. Please try again.",
+        variant: "destructive",
+      });
     }
   };
   
@@ -575,7 +747,11 @@ export default function TournamentManagementPage() {
                           <Button variant="ghost" size="icon">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => team.id && handleDeleteTeam(team.id)}
+                          >
                             <Trash className="h-4 w-4" />
                           </Button>
                         </div>
@@ -767,7 +943,11 @@ export default function TournamentManagementPage() {
                                   <Button variant="ghost" size="icon">
                                     <Edit className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="ghost" size="icon">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => match.id && handleDeleteMatch(match.id)}
+                                  >
                                     <Trash className="h-4 w-4" />
                                   </Button>
                                 </div>

@@ -1,9 +1,213 @@
+"use client";
+
 import { Trophy, Users, Medal, Calendar, Info, Target } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useEffect, useState } from "react"
+import { supabase } from "@/lib/supabase"
+import { format } from "date-fns"
+
+// Define interfaces for tournament data
+interface Team {
+  id: string;
+  name: string;
+  player1_id: string;
+  player2_id: string;
+  group?: string;
+  player1?: TeamMember;
+  player2?: TeamMember;
+  stage?: string;
+}
+
+interface TeamMember {
+  id: string;
+  name: string;
+  image: string | null;
+}
+
+interface Match {
+  id: string;
+  team1_id: string;
+  team2_id: string;
+  date: string;
+  stage: 'group' | 'super_six' | 'semifinal' | 'final';
+  group?: string;
+  winner_id?: string;
+  scores?: {
+    team1_score: number;
+    team2_score: number;
+  };
+  team1?: Team;
+  team2?: Team;
+}
+
+interface TournamentSettings {
+  id: string;
+  start_date: string;
+  end_date: string;
+  status: 'upcoming' | 'active' | 'completed';
+}
+
+// MatchCard component for displaying matches
+const MatchCard = ({ 
+  match, 
+  getTeamName, 
+  showWinner = true 
+}: { 
+  match: Match; 
+  getTeamName: (teamId: string) => string; 
+  showWinner?: boolean;
+}) => {
+  return (
+    <div className="text-center space-y-2">
+      <p className="text-sm text-muted-foreground">
+        {format(new Date(match.date), 'MMMM d, yyyy')}
+      </p>
+      <div className="flex items-center justify-center space-x-4">
+        <div className="text-right w-1/3">
+          <p className="font-medium">{getTeamName(match.team1_id)}</p>
+        </div>
+        <div className="bg-orange-200 px-3 py-1 rounded-lg">
+          <span className="font-bold text-sm">
+            {match.scores ? `${match.scores.team1_score} - ${match.scores.team2_score}` : 'vs'}
+          </span>
+        </div>
+        <div className="text-left w-1/3">
+          <p className="font-medium">{getTeamName(match.team2_id)}</p>
+        </div>
+      </div>
+      {showWinner && match.winner_id && (
+        <p className="text-xs text-orange-600">
+          Winner: {getTeamName(match.winner_id)}
+        </p>
+      )}
+    </div>
+  );
+};
+
+// Final matches
+const FinalMatchCard = ({ 
+  match, 
+  getTeamName 
+}: { 
+  match: Match; 
+  getTeamName: (teamId: string) => string;
+}) => {
+  return (
+    <div className="text-center space-y-2">
+      <p className="text-sm text-muted-foreground">
+        {format(new Date(match.date), 'MMMM d, yyyy')}
+      </p>
+      <div className="flex items-center justify-center space-x-4">
+        <div className="text-right w-1/3">
+          <p className="font-medium">{getTeamName(match.team1_id)}</p>
+        </div>
+        <div className="bg-orange-300 px-3 py-1 rounded-lg">
+          <span className="font-bold text-sm">
+            {match.scores ? `${match.scores.team1_score} - ${match.scores.team2_score}` : 'vs'}
+          </span>
+        </div>
+        <div className="text-left w-1/3">
+          <p className="font-medium">{getTeamName(match.team2_id)}</p>
+        </div>
+      </div>
+      {match.winner_id && (
+        <div className="mt-2">
+          <div className="rounded-full bg-orange-300 inline-flex items-center justify-center p-2 mb-1">
+            <Trophy className="h-5 w-5 text-orange-800" />
+          </div>
+          <p className="font-medium text-orange-800">
+            Winner: {getTeamName(match.winner_id)}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function TournamentPage() {
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [tournamentSettings, setTournamentSettings] = useState<TournamentSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Group teams by their group
+  const teamsByGroup = teams.reduce((acc, team) => {
+    if (team.group) {
+      if (!acc[team.group]) {
+        acc[team.group] = [];
+      }
+      acc[team.group].push(team);
+    }
+    return acc;
+  }, {} as Record<string, Team[]>);
+
+  // Filter matches by stage
+  const groupMatches = matches.filter(match => match.stage === 'group');
+  const superSixMatches = matches.filter(match => match.stage === 'super_six');
+  const semifinalMatches = matches.filter(match => match.stage === 'semifinal');
+  const finalMatches = matches.filter(match => match.stage === 'final');
+
+  useEffect(() => {
+    async function fetchTournamentData() {
+      setLoading(true);
+      try {
+        // Fetch members
+        const { data: membersData, error: membersError } = await supabase
+          .from('members')
+          .select('id, name, image');
+        
+        if (membersError) throw membersError;
+        setMembers(membersData || []);
+
+        // Fetch teams
+        const { data: teamsData, error: teamsError } = await supabase
+          .from('tournament_teams')
+          .select('id, name, player1_id, player2_id, group, stage');
+        
+        if (teamsError) throw teamsError;
+        setTeams(teamsData || []);
+
+        // Fetch matches
+        const { data: matchesData, error: matchesError } = await supabase
+          .from('tournament_matches')
+          .select('id, team1_id, team2_id, date, stage, group, winner_id, scores');
+        
+        if (matchesError) throw matchesError;
+        setMatches(matchesData || []);
+
+        // Fetch tournament settings
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('tournament_settings')
+          .select('id, start_date, end_date, status')
+          .single();
+        
+        if (settingsError && settingsError.code !== 'PGRST116') throw settingsError;
+        setTournamentSettings(settingsData || null);
+      } catch (error) {
+        console.error('Error fetching tournament data:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchTournamentData();
+  }, []);
+
+  // Helper function to get team name by ID
+  const getTeamName = (teamId: string) => {
+    const team = teams.find(t => t.id === teamId);
+    return team ? team.name : 'TBD';
+  };
+
+  // Helper function to get member name by ID
+  const getMemberName = (memberId: string) => {
+    const member = members.find(m => m.id === memberId);
+    return member ? member.name : 'TBD';
+  };
+
   return (
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Header Section */}
@@ -58,7 +262,7 @@ export default function TournamentPage() {
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4 mt-4">
           <Card>
-            <CardHeader>
+            <CardHeader>  
               <CardTitle>Tournament Structure</CardTitle>
               <CardDescription>Complete tournament flow from groups to finals</CardDescription>
             </CardHeader>
@@ -128,10 +332,40 @@ export default function TournamentPage() {
                     </CardHeader>
                     <CardContent>
                       <ul className="space-y-2">
-                        <li className="text-sm pb-2 border-b">Team {group}1 <span className="text-xs text-muted-foreground">(TBD)</span></li>
-                        <li className="text-sm pb-2 border-b">Team {group}2 <span className="text-xs text-muted-foreground">(TBD)</span></li>
-                        <li className="text-sm">Team {group}3 <span className="text-xs text-muted-foreground">(TBD)</span></li>
+                        {teamsByGroup[group] ? (
+                          teamsByGroup[group].map((team) => (
+                            <li key={team.id} className="text-sm pb-2 border-b">
+                              {team.name}{' '}
+                              <span className="text-xs text-muted-foreground">
+                                ({getMemberName(team.player1_id)}, {getMemberName(team.player2_id)})
+                              </span>
+                            </li>
+                          ))
+                        ) : (
+                          <>
+                            <li className="text-sm pb-2 border-b">Team {group}1 <span className="text-xs text-muted-foreground">(TBD)</span></li>
+                            <li className="text-sm pb-2 border-b">Team {group}2 <span className="text-xs text-muted-foreground">(TBD)</span></li>
+                            <li className="text-sm">Team {group}3 <span className="text-xs text-muted-foreground">(TBD)</span></li>
+                          </>
+                        )}
                       </ul>
+                      
+                      {/* Group Matches */}
+                      {groupMatches.filter(match => match.group === group).length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium mb-2">Matches:</h4>
+                          <div className="space-y-2">
+                            {groupMatches
+                              .filter(match => match.group === group)
+                              .map(match => (
+                                <Card key={match.id} className="p-2 bg-orange-100">
+                                  <MatchCard match={match} getTeamName={getTeamName} />
+                                </Card>
+                              ))
+                            }
+                          </div>
+                        </div>
+                      )}
                       
                       <div className="mt-4">
                         <h4 className="text-sm font-medium">Format:</h4>
@@ -159,18 +393,48 @@ export default function TournamentPage() {
                 <p className="text-sm text-muted-foreground">The Super Six round consists of the top 2 teams from each group:</p>
                 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {[...Array(6)].map((_, i) => (
-                    <Card key={i} className="bg-orange-50 p-4">
-                      <div className="text-center">
-                        <div className="rounded-full bg-orange-200 h-10 w-10 flex items-center justify-center mx-auto mb-2">
-                          <Users className="h-5 w-5 text-orange-800" />
+                  {teams.filter(team => team.stage === 'super_six').length > 0 ? (
+                    teams.filter(team => team.stage === 'super_six').map((team) => (
+                      <Card key={team.id} className="bg-orange-50 p-4">
+                        <div className="text-center">
+                          <div className="rounded-full bg-orange-200 h-10 w-10 flex items-center justify-center mx-auto mb-2">
+                            <Users className="h-5 w-5 text-orange-800" />
+                          </div>
+                          <p className="font-medium">{team.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {getMemberName(team.player1_id)}, {getMemberName(team.player2_id)}
+                          </p>
                         </div>
-                        <p className="font-medium">Team {i+1}</p>
-                        <p className="text-xs text-muted-foreground">TBD</p>
-                      </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    ))
+                  ) : (
+                    [...Array(6)].map((_, i) => (
+                      <Card key={i} className="bg-orange-50 p-4">
+                        <div className="text-center">
+                          <div className="rounded-full bg-orange-200 h-10 w-10 flex items-center justify-center mx-auto mb-2">
+                            <Users className="h-5 w-5 text-orange-800" />
+                          </div>
+                          <p className="font-medium">Team {i+1}</p>
+                          <p className="text-xs text-muted-foreground">TBD</p>
+                        </div>
+                      </Card>
+                    ))
+                  )}
                 </div>
+                
+                {/* Super Six Matches */}
+                {superSixMatches.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-lg font-medium mb-3">Super Six Matches</h3>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {superSixMatches.map(match => (
+                        <Card key={match.id} className="bg-orange-50 p-4">
+                          <MatchCard match={match} getTeamName={getTeamName} />
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 <div className="mt-6">
                   <h4 className="text-sm font-medium">Format:</h4>
@@ -197,77 +461,77 @@ export default function TournamentPage() {
                 <div>
                   <h3 className="font-medium text-orange-800 mb-2">Semi-Finals</h3>
                   <div className="grid md:grid-cols-2 gap-4">
-                    <Card className="bg-orange-50 p-4">
-                      <div className="text-center">
-                        <h4 className="font-medium">Semi-Final 1</h4>
-                        <div className="flex justify-center items-center gap-2 mt-2">
-                          <div className="text-center">
-                            <div className="rounded-full bg-orange-200 h-8 w-8 flex items-center justify-center mx-auto">
-                              <span className="text-xs font-medium">1</span>
+                    {semifinalMatches.length > 0 ? (
+                      semifinalMatches.map((match) => (
+                        <Card key={match.id} className="bg-orange-50 p-4">
+                          <MatchCard match={match} getTeamName={getTeamName} />
+                        </Card>
+                      ))
+                    ) : (
+                      <>
+                        <Card className="bg-orange-50 p-4">
+                          <div className="text-center space-y-2">
+                            <p className="text-sm text-muted-foreground">TBD</p>
+                            <div className="flex items-center justify-center space-x-4">
+                              <div className="text-right w-1/3">
+                                <p className="font-medium">Semifinal 1</p>
+                              </div>
+                              <div className="bg-orange-200 px-3 py-1 rounded-lg">
+                                <span className="font-bold text-sm">vs</span>
+                              </div>
+                              <div className="text-left w-1/3">
+                                <p className="font-medium">Semifinal 2</p>
+                              </div>
                             </div>
-                            <p className="text-xs mt-1">TBD</p>
                           </div>
-                          <span className="text-orange-800 font-bold">vs</span>
-                          <div className="text-center">
-                            <div className="rounded-full bg-orange-200 h-8 w-8 flex items-center justify-center mx-auto">
-                              <span className="text-xs font-medium">4</span>
+                        </Card>
+                        <Card className="bg-orange-50 p-4">
+                          <div className="text-center space-y-2">
+                            <p className="text-sm text-muted-foreground">TBD</p>
+                            <div className="flex items-center justify-center space-x-4">
+                              <div className="text-right w-1/3">
+                                <p className="font-medium">Semifinal 3</p>
+                              </div>
+                              <div className="bg-orange-200 px-3 py-1 rounded-lg">
+                                <span className="font-bold text-sm">vs</span>
+                              </div>
+                              <div className="text-left w-1/3">
+                                <p className="font-medium">Semifinal 4</p>
+                              </div>
                             </div>
-                            <p className="text-xs mt-1">TBD</p>
                           </div>
-                        </div>
-                      </div>
-                    </Card>
-                    <Card className="bg-orange-50 p-4">
-                      <div className="text-center">
-                        <h4 className="font-medium">Semi-Final 2</h4>
-                        <div className="flex justify-center items-center gap-2 mt-2">
-                          <div className="text-center">
-                            <div className="rounded-full bg-orange-200 h-8 w-8 flex items-center justify-center mx-auto">
-                              <span className="text-xs font-medium">2</span>
-                            </div>
-                            <p className="text-xs mt-1">TBD</p>
-                          </div>
-                          <span className="text-orange-800 font-bold">vs</span>
-                          <div className="text-center">
-                            <div className="rounded-full bg-orange-200 h-8 w-8 flex items-center justify-center mx-auto">
-                              <span className="text-xs font-medium">3</span>
-                            </div>
-                            <p className="text-xs mt-1">TBD</p>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
+                        </Card>
+                      </>
+                    )}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-3">
-                    Semi-Finals are played as full 2 matches with 29 points each.
-                  </p>
                 </div>
                 
                 <div>
                   <h3 className="font-medium text-orange-800 mb-2">Final</h3>
-                  <Card className="bg-orange-50 p-4">
-                    <div className="text-center">
-                      <h4 className="font-medium">Championship Final</h4>
-                      <div className="flex justify-center items-center gap-2 mt-2">
-                        <div className="text-center">
-                          <div className="rounded-full bg-orange-200 h-8 w-8 flex items-center justify-center mx-auto">
-                            <span className="text-xs font-medium">SF1</span>
+                  {finalMatches.length > 0 ? (
+                    finalMatches.map((match) => (
+                      <Card key={match.id} className="bg-orange-100 p-4 border-orange-300">
+                        <FinalMatchCard match={match} getTeamName={getTeamName} />
+                      </Card>
+                    ))
+                  ) : (
+                    <Card className="bg-orange-100 p-4 border-orange-300">
+                      <div className="text-center space-y-2">
+                        <p className="text-sm text-muted-foreground">TBD</p>
+                        <div className="flex items-center justify-center space-x-4">
+                          <div className="text-right w-1/3">
+                            <p className="font-medium">Finalist 1</p>
                           </div>
-                          <p className="text-xs mt-1">Winner</p>
-                        </div>
-                        <span className="text-orange-800 font-bold">vs</span>
-                        <div className="text-center">
-                          <div className="rounded-full bg-orange-200 h-8 w-8 flex items-center justify-center mx-auto">
-                            <span className="text-xs font-medium">SF2</span>
+                          <div className="bg-orange-300 px-3 py-1 rounded-lg">
+                            <span className="font-bold text-sm">vs</span>
                           </div>
-                          <p className="text-xs mt-1">Winner</p>
+                          <div className="text-left w-1/3">
+                            <p className="font-medium">Finalist 2</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Card>
-                  <p className="text-sm text-muted-foreground mt-3">
-                    The final is played as a 29 points match to determine the tournament champion.
-                  </p>
+                    </Card>
+                  )}
                 </div>
               </div>
             </CardContent>
