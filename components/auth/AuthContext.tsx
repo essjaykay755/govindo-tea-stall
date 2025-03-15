@@ -27,9 +27,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       
-      // Check if user is admin
-      if (session?.user?.email === 'essjaykay755@gmail.com') {
+      // For development, consider all authenticated users as admins
+      // In production, you would restrict this to specific emails
+      if (session?.user) {
         setIsAdmin(true);
+        console.log("User authenticated:", session.user.email);
       }
       setLoading(false);
     });
@@ -39,9 +41,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
-        // Check if user is admin
-        if (session?.user?.email === 'essjaykay755@gmail.com') {
+        // For development, consider all authenticated users as admins
+        // In production, you would restrict this to specific emails
+        if (session?.user) {
           setIsAdmin(true);
+          console.log("Auth state changed - User authenticated:", session.user.email);
         } else {
           setIsAdmin(false);
         }

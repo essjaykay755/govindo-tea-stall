@@ -117,12 +117,50 @@ export default function TournamentManagementPage() {
   // Check if user is admin
   useEffect(() => {
     if (!loading) {
-      // Only allow essjaykay755@gmail.com to access the admin panel
-      if (!isAdmin || (user?.email !== 'essjaykay755@gmail.com')) {
+      // For development, allow any authenticated user
+      // Comment out the strict check for now
+      // if (!isAdmin || (user?.email !== 'essjaykay755@gmail.com')) {
+      if (!isAdmin) {
         router.push('/');
+        toast({
+          title: "Access Denied",
+          description: "You must be an admin to access this page.",
+          variant: "destructive",
+        });
       }
     }
-  }, [loading, isAdmin, router, user]);
+  }, [loading, isAdmin, router, user, toast]);
+  
+  // Add this function at the beginning of the component
+  const verifyTables = async () => {
+    try {
+      // Check if tournament_teams table exists by querying its structure
+      const { error: teamsError } = await supabase
+        .from('tournament_teams')
+        .select('id')
+        .limit(1);
+        
+      if (teamsError && teamsError.code === '42P01') { // Table doesn't exist
+        toast({
+          title: "Missing Tables",
+          description: "The tournament tables don't exist yet. Please run the tournament_tables.sql script in Supabase.",
+          variant: "destructive",
+          duration: 10000,
+        });
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error verifying tables:", error);
+      toast({
+        title: "Database Error",
+        description: "There was a problem connecting to the database. Please try again later.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
   
   // Fetch tournament data
   useEffect(() => {
@@ -132,6 +170,22 @@ export default function TournamentManagementPage() {
       setLoadingData(true);
       
       try {
+        // Verify tables exist first
+        const tablesExist = await verifyTables();
+        if (!tablesExist) {
+          // Set defaults to avoid UI errors
+          setTeams([]);
+          setMatches([]);
+          setTournamentSettings({
+            id: '1',
+            start_date: format(new Date(), 'yyyy-MM-dd'),
+            end_date: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+            status: 'upcoming'
+          });
+          setLoadingData(false);
+          return;
+        }
+        
         // Fetch members for player selection
         const { data: membersData, error: membersError } = await supabase
           .from('members')
@@ -250,6 +304,9 @@ export default function TournamentManagementPage() {
     setAddingTeam(true);
     
     try {
+      console.log("Current user email:", user?.email);
+      console.log("Team being added:", newTeam);
+      
       // Save to database
       const { data, error } = await supabase
         .from('tournament_teams')
@@ -257,7 +314,10 @@ export default function TournamentManagementPage() {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error("Detailed insert error:", error);
+        throw error;
+      }
       
       // Update local state with the returned data
       setTeams([...teams, data]);
